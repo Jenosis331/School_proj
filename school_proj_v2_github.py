@@ -171,16 +171,31 @@ def callback():
 def handle_message(event):
     user_id = event.source.user_id
     user_msg = event.message.text
-    
-    # 假設 call_llm 已經定義在上面
-    ai_reply = call_llm(user_id, user_msg) 
+
+    # 1) 先快速回覆：確保 1 秒內完成，避免 webhook 逾時
     try:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=ai_reply)
+            TextSendMessage(text="已收到，我正在查詢，稍後回覆你。")
         )
     except Exception as e:
-        print(f"回覆失敗: {e}")
+        print(f"[Reply] quick reply failed: {e}")
+
+    # 2) 背景跑 RAG/LLM；完成後用 push_message 回正式答案
+    try:
+        ai_reply = call_llm(user_id, user_msg)  # 這裡可能會花幾秒
+        if not ai_reply:
+            ai_reply = "抱歉，目前無法產生回覆。"
+
+        # LINE 單則訊息有長度限制，保守截斷避免報錯
+        line_bot_api.push_message(
+            to=user_id,
+            messages=TextSendMessage(text=ai_reply[:5000])
+        )
+    except LineBotApiError as e:
+        print(f"[Push] LineBotApiError: {e}")
+    except Exception as e:
+        print(f"[Push] Unknown error: {e}")
 
 if __name__ == '__main__':
     # 修改：Render 會提供 PORT 環境變數，沒有的話預設 5000
