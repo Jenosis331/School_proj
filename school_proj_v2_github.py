@@ -157,15 +157,24 @@ def call_llm(user_id, user_message):
     user_histories[user_id] = history
     return ai_reply
 
-@app.route("/webhook", methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get("X-Line-Signature", "")
     body = request.get_data(as_text=True)
+    print("[Webhook] headers:", dict(request.headers))
+    print("[Webhook] body:", body[:500])
+
     try:
         handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
-    return "OK"
+    except InvalidSignatureError as e:
+        print("[Webhook] Invalid signature:", e)
+        return "Invalid signature", 200
+    except Exception as e:
+        print("[Webhook] Handler error:", repr(e))
+        return "Handler error", 200
+
+    return "OK", 200
+
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
