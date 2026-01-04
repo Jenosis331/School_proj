@@ -1,0 +1,8 @@
+flask
+line-bot-sdk
+openai
+langchain-community
+langchain-google-genai
+chromadb
+pysqlite3-binary
+gunicorn
